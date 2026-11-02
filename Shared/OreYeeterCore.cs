@@ -17,7 +17,7 @@ namespace OreYeeter
         /// <summary>A ship drill whose name contains this tag voids its owner's ores (case-insensitive).</summary>
         string DrillNameTag { get; set; }
 
-        /// <summary>Comma separated ore subtypes voided for EVERY player's drills. Players cannot remove these.</summary>
+        /// <summary>Comma separated ore subtypes voided for EVERY player, by tagged drills (or all drills of "!ore auto" players). Players cannot remove these.</summary>
         string MasterOres { get; set; }
 
         /// <summary>Comma separated personal list for players who never edited theirs.</summary>

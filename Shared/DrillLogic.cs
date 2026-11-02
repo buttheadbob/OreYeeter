@@ -11,8 +11,12 @@ namespace OreYeeter
         /// Called for every voxel material on every drill tick, so it must stay allocation free.
         /// Returns true to let the game harvest normally, false to void the ore (it is never created).
         /// </summary>
-        public static bool ShouldHarvest(MyDrillBase drillBase, MyVoxelMaterialDefinition material)
+        public static bool ShouldHarvest(MyDrillBase drillBase, MyVoxelMaterialDefinition material, int removedAmount)
         {
+            // The game passes every voxel material on every cut, almost all of them with nothing removed
+            if (removedAmount <= 0)
+                return true;
+
             var config = OreYeeterCore.Config;
             if (config == null || !config.Enabled)
                 return true;

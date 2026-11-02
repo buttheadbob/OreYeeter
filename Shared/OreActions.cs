@@ -74,6 +74,10 @@ namespace OreYeeter
             if (Config.CleanCooldownSeconds > 0 && CleanCooldowns.TryGetValue(playerId, out DateTime until) && until > DateTime.UtcNow)
                 return $"On cooldown for {(int)(until - DateTime.UtcNow).TotalSeconds} more seconds.";
 
+            // Started on every attempt, not only successful ones: each try walks the whole mechanical group on the game thread.
+            if (Config.CleanCooldownSeconds > 0)
+                CleanCooldowns[playerId] = DateTime.UtcNow.AddSeconds(Config.CleanCooldownSeconds);
+
             // Mechanical group = rotor/piston subgrids included, connector docked ships are NOT.
             List<MyCubeGrid> grids;
             if (player.Controller?.ControlledEntity is MyCockpit cockpit)
@@ -117,10 +121,7 @@ namespace OreYeeter
                 }
             }
 
-            if (removed > 0 && Config.CleanCooldownSeconds > 0)
-                CleanCooldowns[playerId] = DateTime.UtcNow.AddSeconds(Config.CleanCooldownSeconds);
-
-            return $"Yeeted {removed:n0} ore." + (skipped ? " Skipped containers you don't own." : "");
+            return $"Yeeted {removed:n0} ore." + (skipped ? " Skipped containers you have no access to." : "");
         }
 
         // ---------------------------------------------------------------- admin
@@ -169,16 +170,11 @@ namespace OreYeeter
             return list.Count == 0 ? "none" : string.Join(", ", list);
         }
 
-        // Owner, or a member of the owner's faction. Blocks owned by "nobody" (0) are never touched.
+        // Only containers the player could open in vanilla: the owner, or anyone the block's share mode lets in
+        // (a faction mate only when it is shared with the faction). Blocks owned by "nobody" (0) are never touched.
         private static bool CanClean(MyCubeBlock block, long playerId)
         {
-            long owner = block.OwnerId;
-            if (owner == 0)
-                return false;
-            if (owner == playerId)
-                return true;
-            var faction = MySession.Static.Factions.TryGetPlayerFaction(playerId);
-            return faction != null && faction == MySession.Static.Factions.TryGetPlayerFaction(owner);
+            return block.OwnerId != 0 && block is MyTerminalBlock terminal && terminal.HasPlayerAccess(playerId);
         }
 
         // Every MyObjectBuilder_Ore subtype currently defined (vanilla + mods)

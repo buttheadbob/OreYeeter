@@ -11,8 +11,8 @@ using VRage.Plugins;
 
 // Define assembly version when compiled by Magnetar
 #if !DEV_BUILD
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.0.1.0")]
+[assembly: AssemblyFileVersion("1.0.1.0")]
 #endif
 
 namespace OreYeeter.MagnetarHost
@@ -62,9 +62,9 @@ namespace OreYeeter.MagnetarHost
             }
             catch (Exception e)
             {
-                // A game update that changed the patched method must not take the server down, the plugin just stays inactive
+                // A game update that changed the patched method must not take the server down, the plugin just stays inactive:
+                // no patch, no commands. Enabled is left alone, it is saved to the config and would outlive the next fixed version.
                 Log.Critical("Failed to apply the Harmony patches, OreYeeter is inactive", e);
-                _config.Enabled = false;
                 return;
             }
 

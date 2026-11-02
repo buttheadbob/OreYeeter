@@ -15,9 +15,9 @@ namespace OreYeeter.MagnetarHost.Patches
     {
         // ReSharper disable once UnusedMember.Local
         [HarmonyPrefix]
-        private static bool Prefix(MyDrillBase __instance, MyVoxelMaterialDefinition material)
+        private static bool Prefix(MyDrillBase __instance, MyVoxelMaterialDefinition material, int removedAmount)
         {
-            return DrillLogic.ShouldHarvest(__instance, material);
+            return DrillLogic.ShouldHarvest(__instance, material, removedAmount);
         }
     }
 }

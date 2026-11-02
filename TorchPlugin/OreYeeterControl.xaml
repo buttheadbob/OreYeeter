@@ -27,7 +27,7 @@
 
         <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="Server ore list" Margin="5"/>
         <TextBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="5" Text="{Binding MasterOres}"
-                 ToolTip="Comma separated ore subtypes yeeted for every player, e.g. Stone,Ice"/>
+                 ToolTip="Comma separated ore subtypes yeeted for every player, e.g. Stone,Ice. Only tagged drills (or all drills of !ore auto players) yeet them"/>
 
         <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="Default player list" Margin="5"/>
         <TextBox Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Margin="5" Text="{Binding DefaultPlayerOres}"

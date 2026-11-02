@@ -39,10 +39,10 @@ host projects stay thin wrappers.
 
 ## How it works
 - The prefix on `MyDrillBase.TryHarvestOreMaterial` returns false to void the ore. Both loaders bind prefix parameters
-  by **name** only, so they must match the original's (`material`, `__instance`).
+  by **name** only, so they must match the original's (`__instance`, `material`, `removedAmount`).
 - A drill yeets when its name contains the tag (default `!ore`) or its owner ran `!ore auto`.
-- An ore is voided if it is on the server list (`MasterOres`) or the drill owner's personal list.
-- Personal lists: `PlayerOres\<steamid>.json` under the plugin's storage folder. Players without a file use `DefaultPlayerOres`.
+- A tagged or auto drill voids ores on the server list (`MasterOres`) or its owner's personal list. Untagged drills void nothing, not even server list ores.
+- Personal lists: `PlayerOres\<steamid>.json` under the plugin's storage folder. Players without a file use `DefaultPlayerOres`, and follow later changes to it.
 
 ## Commands
 | Command | Who | |
@@ -52,3 +52,6 @@ host projects stay thin wrappers.
 | `!ore clean` | player | remove listed ores already stored on the grid you sit in or look at |
 | `!ore master list` / `add` / `remove` | admin | server wide list, players cannot remove these |
 | `!ore reload` | admin (Torch only) | reload the config. On Magnetar edit it in Quasar |
+
+## License
+Public domain ([The Unlicense](LICENSE)): anyone may copy, modify, use and redistribute it for any purpose, no conditions.

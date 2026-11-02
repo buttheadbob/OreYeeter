@@ -18,7 +18,7 @@ namespace OreYeeter.MagnetarHost
         [StringOption(maxLength: 64, description: "A ship drill whose name contains this tag voids its owner's ores", Parent = "general")]
         public string DrillNameTag { get => _drillNameTag; set => SetField(ref _drillNameTag, value ?? ""); }
 
-        [StringOption(maxLength: 1000, description: "Comma separated ore subtypes voided for EVERY player, e.g. Stone,Ice. Players cannot remove these", Parent = "general")]
+        [StringOption(maxLength: 1000, description: "Comma separated ore subtypes voided for EVERY player, e.g. Stone,Ice. Only tagged drills (or all drills of !ore auto players) void them. Players cannot remove these", Parent = "general")]
         public string MasterOres { get => _masterOres; set => SetField(ref _masterOres, value ?? ""); }
 
         [StringOption(maxLength: 1000, description: "Comma separated ore list used for players who have not changed their own list yet", Parent = "general")]

@@ -30,9 +30,9 @@ namespace OreYeeter.TorchHost.Patches
 
         // Torch binds prefix parameters to the original's by NAME only (there is no type check), so every parameter
         // used here must be named exactly like the original's and have its exact type. Unused ones are left out.
-        public static bool TryHarvestPrefix(MyDrillBase __instance, MyVoxelMaterialDefinition material)
+        public static bool TryHarvestPrefix(MyDrillBase __instance, MyVoxelMaterialDefinition material, int removedAmount)
         {
-            return DrillLogic.ShouldHarvest(__instance, material);
+            return DrillLogic.ShouldHarvest(__instance, material, removedAmount);
         }
     }
 }

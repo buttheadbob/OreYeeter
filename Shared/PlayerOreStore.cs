@@ -18,10 +18,14 @@ namespace OreYeeter
         /// <summary>When true all of the player's ship drills yeet, not only the ones carrying the name tag.</summary>
         public bool AutoDrills { get; }
 
-        public PlayerSettings(HashSet<string> ores, bool autoDrills)
+        /// <summary>True while the player has no file: Ores is then the configured default list and follows its changes.</summary>
+        public bool UsesDefaults { get; }
+
+        public PlayerSettings(HashSet<string> ores, bool autoDrills, bool usesDefaults = false)
         {
             Ores = ores;
             AutoDrills = autoDrills;
+            UsesDefaults = usesDefaults;
         }
     }
 
@@ -61,7 +65,21 @@ namespace OreYeeter
             return steamId == 0 ? null : Get(steamId);
         }
 
-        public static PlayerSettings Get(ulong steamId) => Cache.GetOrAdd(steamId, Load);
+        public static PlayerSettings Get(ulong steamId)
+        {
+            var settings = Cache.GetOrAdd(steamId, Load);
+            if (!settings.UsesDefaults)
+                return settings;
+
+            // The default set is swapped in whole when the config changes, so a reference check spots an admin's edit
+            // without allocating on the drill path. TryUpdate keeps a concurrent Update from being overwritten.
+            var defaults = OreRules.GetDefaults(OreYeeterCore.Config);
+            if (ReferenceEquals(settings.Ores, defaults))
+                return settings;
+
+            var current = new PlayerSettings(defaults, settings.AutoDrills, true);
+            return Cache.TryUpdate(steamId, current, settings) ? current : Get(steamId);
+        }
 
         /// <summary>Applies a change, updating memory first and then the file.</summary>
         public static PlayerSettings Update(ulong steamId, Func<PlayerSettings, PlayerSettings> change)
@@ -78,7 +96,7 @@ namespace OreYeeter
         private static PlayerSettings Load(ulong steamId)
         {
             var host = OreYeeterCore.Host;
-            var defaults = new PlayerSettings(new HashSet<string>(OreRules.GetDefaults(host.Config), StringComparer.OrdinalIgnoreCase), false);
+            var defaults = new PlayerSettings(OreRules.GetDefaults(host.Config), false, true);
             string file = FilePath(steamId);
             try
             {
