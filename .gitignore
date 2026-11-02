@@ -1,0 +1,17 @@
+# Junctions to the local game / Torch install (created by the Setup bat)
+GameBinaries/
+TorchBinaries/
+
+# Local path overrides, copy of Directory.Build.props.template
+Directory.Build.props
+
+# Build output
+bin/
+obj/
+.vs/
+.idea/
+*.user
+*.suo
+
+# The packaged Torch plugin zip is produced by the Torch build
+Build/*.zip

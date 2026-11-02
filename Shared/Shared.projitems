@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>3E7A91C2-5B64-4D08-A2F1-8C0D6E4B7A39</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>OreYeeter</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)DrillLogic.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)GridUtils.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)OreActions.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)OreYeeterCore.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)PlayerOreStore.cs" />
+  </ItemGroup>
+</Project>

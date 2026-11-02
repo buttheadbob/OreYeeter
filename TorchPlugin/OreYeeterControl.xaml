@@ -1,0 +1,41 @@
+<UserControl x:Class="OreYeeter.TorchHost.OreYeeterControl"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" SharedSizeGroup="Labels"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto" SharedSizeGroup="Buttons"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Grid.ColumnSpan="2" VerticalAlignment="Center" Text="OreYeeter" FontWeight="Bold" FontSize="16" Margin="5"/>
+
+        <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Enabled" Margin="5"/>
+        <CheckBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="5" IsChecked="{Binding Enabled}"/>
+
+        <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Drill name tag" Margin="5"/>
+        <TextBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="5" Text="{Binding DrillNameTag}"/>
+
+        <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="Server ore list" Margin="5"/>
+        <TextBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="5" Text="{Binding MasterOres}"
+                 ToolTip="Comma separated ore subtypes yeeted for every player, e.g. Stone,Ice"/>
+
+        <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="Default player list" Margin="5"/>
+        <TextBox Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Margin="5" Text="{Binding DefaultPlayerOres}"
+                 ToolTip="Used for players who have not changed their own list yet"/>
+
+        <TextBlock Grid.Row="5" VerticalAlignment="Center" Text="Clean cooldown (s)" Margin="5"/>
+        <TextBox Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Margin="5" Text="{Binding CleanCooldownSeconds}"/>
+
+        <Button Grid.Row="6" Grid.Column="2" Content="Save Config" Margin="5" Click="SaveButton_OnClick"/>
+    </Grid>
+</UserControl>

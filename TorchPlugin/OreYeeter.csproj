@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{9D3B6F84-1C25-4A70-8E39-B4F7A2C61D05}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>OreYeeter.TorchHost</RootNamespace>
+    <AssemblyName>OreYeeter</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <WarningLevel>4</WarningLevel>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <Deterministic>true</Deterministic>
+    <LangVersion>8</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>x64</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\x64\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>x64</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\x64\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="netstandard" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="System.Xml" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="NLog">
+      <HintPath>..\TorchBinaries\NLog.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Torch">
+      <HintPath>..\TorchBinaries\Torch.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Torch.API">
+      <HintPath>..\TorchBinaries\Torch.API.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Sandbox.Common">
+      <HintPath>..\GameBinaries\Sandbox.Common.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Sandbox.Game">
+      <HintPath>..\GameBinaries\Sandbox.Game.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="SpaceEngineers.Game">
+      <HintPath>..\GameBinaries\SpaceEngineers.Game.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="SpaceEngineers.ObjectBuilders">
+      <HintPath>..\GameBinaries\SpaceEngineers.ObjectBuilders.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="VRage">
+      <HintPath>..\GameBinaries\VRage.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="VRage.Game">
+      <HintPath>..\GameBinaries\VRage.Game.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="VRage.Library">
+      <HintPath>..\GameBinaries\VRage.Library.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="VRage.Math">
+      <HintPath>..\GameBinaries\VRage.Math.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="OreYeeterCommands.cs" />
+    <Compile Include="OreYeeterConfig.cs" />
+    <Compile Include="OreYeeterControl.xaml.cs">
+      <DependentUpon>OreYeeterControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OreYeeterPlugin.cs" />
+    <Compile Include="Patches\DrillPatch.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="OreYeeterControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="manifest.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <Import Project="../Shared/Shared.projitems" Label="Shared" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- After every build, package the plugin as ..\Build\OreYeeter.zip (dll + Build\manifest.xml, all Torch needs).
+       Staged in obj\ so nothing else ends up in the zip. -->
+  <Target Name="PackagePluginZip" AfterTargets="Build">
+    <PropertyGroup>
+      <PluginBuildDir>$(ProjectDir)..\Build\</PluginBuildDir>
+      <PluginZipStage>$(ProjectDir)$(IntermediateOutputPath)PluginZip\</PluginZipStage>
+      <PluginZipFile>$(PluginBuildDir)$(TargetName).zip</PluginZipFile>
+    </PropertyGroup>
+    <RemoveDir Directories="$(PluginZipStage)" />
+    <Copy SourceFiles="$(TargetPath);$(ProjectDir)manifest.xml" DestinationFolder="$(PluginZipStage)" />
+    <ZipDirectory SourceDirectory="$(PluginZipStage)" DestinationFile="$(PluginZipFile)" Overwrite="true" />
+    <Message Importance="high" Text="Plugin zip: $(PluginZipFile)" />
+  </Target>
+</Project>

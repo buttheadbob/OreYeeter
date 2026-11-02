@@ -1,0 +1,125 @@
+OreYeeter - TODO and project notes
+===================================
+Status (2026-11-02): both builds compile. NOTHING has been run in a real Torch or Magnetar server yet.
+
+
+1. WHAT THIS IS
+---------------
+Players keep a personal list of ores that their ship drills void while mining (the ore is never created).
+Split out of CrunchUtils because the author declined the PR for the player-controlled ore list.
+One code base, two plugin loaders:
+
+  TorchPlugin/   Torch (.NET Framework 4.8, old-style csproj). Torch NATIVE patching ([PatchShim]), no Harmony.
+  ServerPlugin/  Magnetar (net48 + net10.0, SDK-style csproj). Harmony + Magnetar PluginSdk. Quasar renders the config.
+  Shared/        Engine-neutral core compiled into BOTH. Game assemblies only.
+
+Commands (same on both): !ore list | add <ore> | remove <ore> | auto | clean
+                         !ore master list | add | remove   (admin)     !ore reload (admin, Torch only)
+Drill name tag (default "!ore"): a drill with this in its name voids its owner's ores. "!ore auto" = all their drills.
+An ore is voided if it is on the server list (MasterOres) OR the drill owner's personal list.
+Personal lists: <storage>\PlayerOres\<steamid>.json  { "AutoDrills": bool, "Ores": [..] }
+  Torch: plugin StoragePath.   Magnetar: <MyFileSystem.UserDataPath>\OreYeeter\.
+
+
+2. RULES FOR Shared/  (important, easy to break)
+------------------------------------------------
+- No Torch, NLog, Harmony or PluginSdk references. Game assemblies (Sandbox.*, VRage.*) only.
+- C# 8 syntax at most (the Torch project is LangVersion 8). Block-scoped namespaces. No `field` keyword, no records.
+- Talk to the loader only through IOreYeeterHost / IOreConfig (Shared/OreYeeterCore.cs).
+- Magnetar compiles the ServerPlugin and Shared DIRECTORIES from the pinned git commit with its own Roslyn.
+  Every .cs under those two folders must compile there. The .csproj files are only for local builds.
+- New behaviour goes in Shared (OreActions / DrillLogic). Host command classes stay thin wrappers.
+- New Shared file => add it to Shared/Shared.projitems too (Torch and ServerPlugin use that list).
+- Config properties: add to IOreConfig AND both OreYeeterConfig classes (TorchPlugin and ServerPlugin).
+  Defaults live in OreYeeterCore (Default* constants) so the two configs cannot drift.
+- Both loaders bind patch prefix parameters by NAME only (no type check). The prefix parameters
+  (__instance, material) must match MyDrillBase.TryHarvestOreMaterial(MyVoxelMaterialDefinition material,
+  Vector3D hitPosition, int removedAmount, bool onlyCheck). Verified against the current game dll. Re-check after game updates.
+
+
+3. BUILDING
+-----------
+- Quick way: build.bat [torch|magnetar|all] [release|debug] [nodeploy]   (default: all, Release).
+  Torch uses Visual Studio's MSBuild (found via vswhere), Magnetar uses `dotnet build`. Exit code 1 if any part fails.
+- First time: run "Setup (run before opening solution).bat" (junctions GameBinaries/TorchBinaries + Directory.Build.props).
+  Current machine: GameBinaries -> E:\Torch\DedicatedServer64, TorchBinaries -> E:\Torch.
+- Whole solution: "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe" OreYeeter.sln -restore -p:Configuration=Release
+  (plain `dotnet build` on the .sln will NOT work: the Torch project needs the .NET Framework MSBuild)
+- Magnetar only: dotnet build ServerPlugin -c Release     (add -p:DeployToMagnetar=false to skip the copy step)
+- Outputs: Build\OreYeeter.zip (Torch: dll + manifest.xml), ServerPlugin\bin\Release\net48 and \net10.0.
+- Directory.Build.props is local (gitignored). Dedicated64 = E:\Torch\DedicatedServer64.
+  MagnetarBin points at a PluginSdk.dll BUILT FROM THE magnetar CLONE
+  (C:\Development\Development\Public\magnetar\PluginSdk\bin\Release\netstandard2.0), because Magnetar is not installed here.
+  If that bin folder is cleaned, rebuild it:  cd magnetar\PluginSdk ; dotnet build -c Release -p:DS64=E:\Torch\DedicatedServer64
+- Versions: bump BOTH Version.Build.props (Magnetar) and TorchPlugin\manifest.xml (Torch).
+- Plugin GUIDs: Torch manifest 7c1f5d2e-3b8a-4e6f-9a41-5d0c2b7e9f13, Magnetar hub 6e0b4a93-d1f7-4c28-b5a6-3f92c8d1e704.
+  Never change them once published.
+
+
+4. STILL TO DO
+--------------
+Testing (nothing below has been run in a server):
+[ ] Torch: copy Build\OreYeeter.zip into the Torch plugins folder, enable it, check the log shows
+    "Patched MyDrillBase.TryHarvestOreMaterial" and "OreYeeter loaded (Torch)".
+[ ] Torch: the config tab renders and saves; OreYeeterConfig.cfg is written to the plugin storage folder.
+[ ] Magnetar (Legacy and Interim): enable the plugin, check "Loaded (Magnetar)" and that the Harmony patch applied.
+[ ] Quasar: the OreYeeter config editor appears (it is found via the public Plugin.PluginConfig property)
+    and edits from Quasar are saved to OreYeeter.cfg in UserDataPath.
+[ ] Drills: a drill named "!ore" stops producing Stone; other ores still come through; hand drills unaffected.
+[ ] "!ore auto" makes all of the owner's ship drills yeet; survives a server restart (stored in the json).
+[ ] Drill owned by someone else / owned by nobody / owner offline - owner list is looked up by OwnerId, check each.
+[ ] !ore add / remove with a valid ore, an unknown ore, a modded ore, "Ore/Stone" style input.
+[ ] !ore remove of a master-list ore keeps it yeeted and tells the player.
+[ ] !ore clean: from a cockpit, looking at a grid, nothing in range, other players' containers (skipped),
+    faction mates' containers (allowed), docked-by-connector grids (must NOT be touched), rotor/piston subgrids (touched), cooldown.
+[ ] !ore master add/remove (admin) saves the config on both loaders.
+[ ] Commands do not clash with other installed plugins using "!ore".
+[ ] Performance: the prefix runs for every voxel material on every drill tick. Check with a big mining ship / many drills.
+[ ] Linux: the Interim (net10.0) build is untested there. PlayerOreStore uses Path.Combine so paths should be fine.
+
+Possible work:
+[ ] EnsureCode hash guard for the Magnetar Harmony patch (template has Shared/Tools/EnsureCode.cs, CodeChange.cs,
+    Hashing.cs). Needs the method-body hash of TryHarvestOreMaterial read from a real run. Without it the patch still
+    fails safe: if the method signature changes, Harmony throws, the plugin logs critical and disables itself.
+    It would additionally catch body changes that do not break the patch.
+[ ] Torch: same idea (a startup check that TryHarvestOreMaterial still exists is there, via the static field initialiser
+    throwing; it does not catch body changes).
+[ ] Hand drills are not covered (CrunchUtils did not either). Add if wanted.
+[ ] Not covered: ore from other sources than drills (welders/grinders, refineries, mods), ice from ice-gas generators etc.
+[ ] Player facing help: the Magnetar host generates !ore / !ore help automatically; Torch has no auto overview.
+[ ] Unit tests for OreRules (parse/match) - it has no game dependency apart from the PlayerSettings type.
+[ ] Consider also storing the personal list change history / a per-player cap on list size.
+[ ] Localisation of the reply texts (currently English, in Shared/OreActions.cs).
+
+Publishing:
+[ ] Create the GitHub repository, then `git init` this folder (it is NOT a git repo yet). Do not commit
+    GameBinaries/TorchBinaries/Directory.Build.props/bin/obj (already in .gitignore).
+[ ] Fill the TODOs in OreYeeter.xml: RepoId, Author, Commit (full hash of the release commit).
+    Check <Hidden>: the template descriptor sets it to true to hide the plugin; ours omits it, so it is visible.
+[ ] PR OreYeeter.xml to magnetar-hub (Plugins\OreYeeter.xml). Review team approves; it pins an exact commit.
+    Runtimes/Platforms tags are optional (autodetected); add <Platforms> if Linux turns out to be unsupported.
+[ ] Torch: upload Build\OreYeeter.zip to the Torch plugin page / distribute manually. The manifest needs a
+    <Repository> tag only if the plugin is published on the Torch site.
+[ ] Replace placeholders: assembly copyright/author text, AssemblyInfo, LICENSE file, GitHub URL in README.
+[ ] Optional: a CHANGELOG.md.
+
+
+5. GOTCHAS FOUND DURING SETUP
+-----------------------------
+- The original OreYeeter folder was the unexpanded Visual Studio Torch template ($safeprojectname$ tokens), so it could
+  not build. It was replaced by the layout above; template leftovers (.vstemplate, icon, Test* files, Resources/Settings) are gone.
+- CrunchUtils keeps two manifest.xml copies that drifted apart. Here there is a single manifest per loader.
+- Namespaces: Shared = OreYeeter, Torch = OreYeeter.TorchHost, Magnetar = OreYeeter.MagnetarHost. Do NOT name a
+  namespace "OreYeeter.Torch": it would shadow the real `Torch` namespace inside the OreYeeter namespaces.
+- Torch config stores ore lists as comma-separated STRINGS (not List<string>): XmlSerializer appends to a
+  pre-filled list on load and would duplicate the default on every restart. The Magnetar config does the same for parity.
+- Magnetar command permission defaults to Admin when [Permission] is missing - every player command has
+  [Permission(MyPromoteLevel.None)] explicitly.
+- Magnetar commands only work on the global chat channel. Console callers have no steam id (handled: "Player only").
+- Magnetar's Quasar finds the config through a public instance property typed as a PluginConfig subclass
+  (Plugin.PluginConfig). Do not change its type to an interface or it disappears from Quasar.
+- ServerPlugin\ServerPlugin.csproj references only the game dlls it needs, plus netstandard.dll (needed to compile the
+  net48 game assemblies from net10.0). If a new game API is used and the net10.0 build complains about a missing
+  type, add that dll reference (the template's full list is in server-plugin-template\ServerPlugin\ServerPlugin.csproj).
+- Reference material: magnetar\skills\se-dev-plugin-sdk\*.md (PluginSdk handbook), server-plugin-template\ (the
+  project template this layout follows), magnetar-hub\SamplePlugin.xml (descriptor format).
