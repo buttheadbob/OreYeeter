@@ -6,13 +6,11 @@
     <!-- The ID of your plugin, never change this -->
     <Id>6e0b4a93-d1f7-4c28-b5a6-3f92c8d1e704</Id>
 
-    <!-- TODO: GitHub repository ID once the repository exists, e.g. your-user/ore-yeeter -->
-    <RepoId>TODO-github-user/ore-yeeter</RepoId>
+    <RepoId>buttheadbob/OreYeeter</RepoId>
 
     <FriendlyName>OreYeeter</FriendlyName>
 
-    <!-- TODO: Author name -->
-    <Author>TODO Author Name</Author>
+    <Author>SentorX</Author>
 
     <Tooltip>Players choose which ores their ship drills void as they mine</Tooltip>
 
