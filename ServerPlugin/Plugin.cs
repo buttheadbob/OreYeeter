@@ -33,6 +33,7 @@ namespace OreYeeter.MagnetarHost
         private OreYeeterConfig _config;
         private string _configPath;
         private string _storageDir;
+        private bool _sharedStorage;
         private int _ticks;
 
         // Quasar finds the config through this public PluginConfig-typed property and renders its editor.
@@ -63,10 +64,9 @@ namespace OreYeeter.MagnetarHost
             // Edits made in Quasar arrive through the config's setters, persist them
             _config.PropertyChanged += OnConfigChanged;
 
-            // The nodes of a cluster share this folder, so a player's list follows them from node to node
-            _storageDir = PluginCluster.IsClusterProcess
-                ? PluginStorage.GetSharedDirectory(Id)
-                : Path.Combine(MyFileSystem.UserDataPath, Name);
+            string shared = SharedStorageDir();
+            _sharedStorage = shared != null;
+            _storageDir = shared ?? Path.Combine(MyFileSystem.UserDataPath, Name);
 
             OreYeeterCore.Host = this;
 
@@ -88,7 +88,7 @@ namespace OreYeeter.MagnetarHost
 
         public void Update()
         {
-            if (PluginCluster.IsClusterProcess && ++_ticks % RefreshTicks == 0)
+            if (_sharedStorage && ++_ticks % RefreshTicks == 0)
                 PlayerOreStore.Refresh();
         }
 
@@ -97,6 +97,23 @@ namespace OreYeeter.MagnetarHost
             // IMPORTANT: Do NOT call harmony.UnpatchAll() here, it may break other plugins.
             if (_config != null)
                 _config.PropertyChanged -= OnConfigChanged;
+        }
+
+        // The nodes of a cluster share this folder, so a player's list follows them from node to node. Null on a plain
+        // server, and on a cluster without shared storage, like one on several hosts with no shared mount.
+        private static string SharedStorageDir()
+        {
+            if (!PluginCluster.IsClusterProcess)
+                return null;
+            try
+            {
+                return PluginStorage.GetSharedDirectory(Id);
+            }
+            catch (InvalidOperationException e)
+            {
+                Log.Warning($"Player lists stay on this node, the cluster has no shared storage: {e.Message}");
+                return null;
+            }
         }
 
         private void OnConfigChanged(object sender, PropertyChangedEventArgs e) => SaveConfig();

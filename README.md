@@ -45,6 +45,7 @@ host projects stay thin wrappers.
 - Personal lists: `PlayerOres\<steamid>.json` under the plugin's storage folder. Players without a file use `DefaultPlayerOres`, and follow later changes to it.
 - On a cluster (Magnetar) the storage folder is the PluginSdk's shared directory, the same on every node, so a player's
   list follows them to whichever node they play on. Every node reads the files again within 5 seconds of a change.
+  A cluster without shared storage (several hosts with no shared mount) logs a warning and keeps the lists per node.
   `!ore master add` / `remove` would change one node's config only, so they refuse there: set `MasterOres` in Quasar.
 
 ## Commands
