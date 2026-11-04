@@ -3,16 +3,18 @@ using System.ComponentModel;
 using System.IO;
 using System.Reflection;
 using HarmonyLib;
+using PluginSdk.Clustering;
 using PluginSdk.Commands;
 using PluginSdk.Config;
 using PluginSdk.Logging;
+using PluginSdk.Storage;
 using VRage.FileSystem;
 using VRage.Plugins;
 
 // Define assembly version when compiled by Magnetar
 #if !DEV_BUILD
-[assembly: AssemblyVersion("1.0.1.0")]
-[assembly: AssemblyFileVersion("1.0.1.0")]
+[assembly: AssemblyVersion("1.0.2.0")]
+[assembly: AssemblyFileVersion("1.0.2.0")]
 #endif
 
 namespace OreYeeter.MagnetarHost
@@ -21,17 +23,25 @@ namespace OreYeeter.MagnetarHost
     public class Plugin : IPlugin, IOreYeeterHost
     {
         public const string Name = "OreYeeter";
+        // The Id of OreYeeter.xml
+        public const string Id = "6e0b4a93-d1f7-4c28-b5a6-3f92c8d1e704";
+
+        // Other nodes of a cluster write the shared player files, their changes are picked up this often
+        private const int RefreshTicks = 300;
         private static readonly Logger Log = Logger.Create(Name);
 
         private OreYeeterConfig _config;
         private string _configPath;
+        private string _storageDir;
+        private bool _sharedStorage;
+        private int _ticks;
 
         // Quasar finds the config through this public PluginConfig-typed property and renders its editor.
         public OreYeeterConfig PluginConfig => _config;
 
         // IOreYeeterHost
         IOreConfig IOreYeeterHost.Config => _config;
-        string IOreYeeterHost.StorageDir => Path.Combine(MyFileSystem.UserDataPath, Name);
+        string IOreYeeterHost.StorageDir => _storageDir;
         void IOreYeeterHost.SaveConfig() => SaveConfig();
         void IOreYeeterHost.LogInfo(string message) => Log.Info(message);
         void IOreYeeterHost.LogError(Exception exception, string message) => Log.Error(message, exception);
@@ -54,6 +64,10 @@ namespace OreYeeter.MagnetarHost
             // Edits made in Quasar arrive through the config's setters, persist them
             _config.PropertyChanged += OnConfigChanged;
 
+            string shared = SharedStorageDir();
+            _sharedStorage = shared != null;
+            _storageDir = shared ?? Path.Combine(MyFileSystem.UserDataPath, Name);
+
             OreYeeterCore.Host = this;
 
             try
@@ -74,6 +88,8 @@ namespace OreYeeter.MagnetarHost
 
         public void Update()
         {
+            if (_sharedStorage && ++_ticks % RefreshTicks == 0)
+                PlayerOreStore.Refresh();
         }
 
         public void Dispose()
@@ -81,6 +97,23 @@ namespace OreYeeter.MagnetarHost
             // IMPORTANT: Do NOT call harmony.UnpatchAll() here, it may break other plugins.
             if (_config != null)
                 _config.PropertyChanged -= OnConfigChanged;
+        }
+
+        // The nodes of a cluster share this folder, so a player's list follows them from node to node. Null on a plain
+        // server, and on a cluster without shared storage, like one on several hosts with no shared mount.
+        private static string SharedStorageDir()
+        {
+            if (!PluginCluster.IsClusterProcess)
+                return null;
+            try
+            {
+                return PluginStorage.GetSharedDirectory(Id);
+            }
+            catch (InvalidOperationException e)
+            {
+                Log.Warning($"Player lists stay on this node, the cluster has no shared storage: {e.Message}");
+                return null;
+            }
         }
 
         private void OnConfigChanged(object sender, PropertyChangedEventArgs e) => SaveConfig();
