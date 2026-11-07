@@ -43,6 +43,10 @@ host projects stay thin wrappers.
 - A drill yeets when its name contains the tag (default `!ore`) or its owner ran `!ore auto`.
 - A tagged or auto drill voids ores on the server list (`MasterOres`) or its owner's personal list. Untagged drills void nothing, not even server list ores.
 - Personal lists: `PlayerOres\<steamid>.json` under the plugin's storage folder. Players without a file use `DefaultPlayerOres`, and follow later changes to it.
+- On a cluster (Magnetar) the storage folder is the PluginSdk's shared directory, the same on every node, so a player's
+  list follows them to whichever node they play on. Every node reads the files again within 5 seconds of a change.
+  A cluster without shared storage (several hosts with no shared mount) logs a warning and keeps the lists per node.
+  `!ore master add` / `remove` would change one node's config only, so they refuse there: set `MasterOres` in Quasar.
 
 ## Commands
 | Command | Who | |

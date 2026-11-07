@@ -41,6 +41,8 @@ namespace OreYeeter
         // identity id -> steam id. Zero (NPCs, not yet mapped) is not cached so a later lookup can still succeed.
         private static readonly ConcurrentDictionary<long, ulong> SteamIds = new ConcurrentDictionary<long, ulong>();
         private static readonly ConcurrentDictionary<ulong, PlayerSettings> Cache = new ConcurrentDictionary<ulong, PlayerSettings>();
+        // steam id -> last write time of the file the cached settings were read from or written to
+        private static readonly ConcurrentDictionary<ulong, DateTime> FileTimes = new ConcurrentDictionary<ulong, DateTime>();
         private static readonly object WriteLock = new object();
 
         private static string Folder => Path.Combine(OreYeeterCore.Host.StorageDir, FolderName);
@@ -93,6 +95,23 @@ namespace OreYeeter
             }
         }
 
+        /// <summary>
+        /// Reloads the cached players whose file another process has written since. Only needed when several servers
+        /// share the storage folder, like the nodes of a cluster. A player's file has one writer at a time: the server
+        /// the player plays on.
+        /// </summary>
+        public static void Refresh()
+        {
+            foreach (ulong steamId in Cache.Keys)
+            {
+                if (FileTimes.TryGetValue(steamId, out DateTime known) && known == File.GetLastWriteTimeUtc(FilePath(steamId)))
+                    continue;
+
+                lock (WriteLock)
+                    Cache[steamId] = Load(steamId);
+            }
+        }
+
         private static PlayerSettings Load(ulong steamId)
         {
             var host = OreYeeterCore.Host;
@@ -100,6 +119,8 @@ namespace OreYeeter
             string file = FilePath(steamId);
             try
             {
+                // Before the read: a write in between leaves an older time, and Refresh reads the file again
+                FileTimes[steamId] = File.GetLastWriteTimeUtc(file);
                 if (!File.Exists(file))
                     return defaults;
 
@@ -142,6 +163,7 @@ namespace OreYeeter
                     File.Replace(temp, file, null);
                 else
                     File.Move(temp, file);
+                FileTimes[steamId] = File.GetLastWriteTimeUtc(file);
             }
             catch (Exception e)
             {
