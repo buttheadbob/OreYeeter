@@ -35,7 +35,9 @@ host projects stay thin wrappers.
      `%AppData%\Magnetar\<Legacy|Interim>\Local` when that folder exists (`-p:DeployToMagnetar=false` disables it).
      `PluginSdk.dll` comes from the Magnetar install, or from a build of the Magnetar repository's `PluginSdk`
      (set `MagnetarBin` in `Directory.Build.props`).
-3. Versions: `Version.Build.props` (Magnetar) and `TorchPlugin\manifest.xml` (Torch), bump both.
+3. Versions, bump all of them together: `Version.Build.props`, `ServerPlugin\ServerPlugin.csproj` and the
+   `AssemblyVersion` lines in `ServerPlugin\Plugin.cs` (Magnetar, whose own compile uses the `Plugin.cs` lines), and
+   `TorchPlugin\manifest.xml` and `TorchPlugin\Properties\AssemblyInfo.cs` (Torch).
 
 ## How it works
 - The prefix on `MyDrillBase.TryHarvestOreMaterial` returns false to void the ore. Both loaders bind prefix parameters
