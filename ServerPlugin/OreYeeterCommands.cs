@@ -1,4 +1,3 @@
-using PluginSdk.Clustering;
 using PluginSdk.Commands;
 using VRage.Game.ModAPI;
 
@@ -9,9 +8,6 @@ namespace OreYeeter.MagnetarHost
     public sealed class OreYeeterCommands : CommandModule
     {
         private const string PlayerOnly = "Player only command.";
-
-        // A node would change only its own config, Quasar sets it on every node of a cluster
-        private const string ClusterMaster = "On a cluster, change the server list (MasterOres) in Quasar's plugin config.";
 
         [Command("list", "Show the ores your yeeting drills void")]
         [Permission(MyPromoteLevel.None)]
@@ -39,10 +35,10 @@ namespace OreYeeter.MagnetarHost
 
         [Command("master add", "Add an ore that is yeeted for every player, e.g. !ore master add Stone")]
         [Permission(MyPromoteLevel.Admin)]
-        public string MasterAdd(string ore) => PluginCluster.IsClusterProcess ? ClusterMaster : OreActions.MasterAdd(ore);
+        public string MasterAdd(string ore) => OreActions.MasterAdd(ore);
 
         [Command("master remove", "Remove an ore from the server list")]
         [Permission(MyPromoteLevel.Admin)]
-        public string MasterRemove(string ore) => PluginCluster.IsClusterProcess ? ClusterMaster : OreActions.MasterRemove(ore);
+        public string MasterRemove(string ore) => OreActions.MasterRemove(ore);
     }
 }

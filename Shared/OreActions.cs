@@ -17,6 +17,9 @@ namespace OreYeeter
     /// </summary>
     public static class OreActions
     {
+        // A node would change only its own config, Quasar sets it on every node of a cluster
+        private const string ClusterMaster = "On a cluster, change the server list (MasterOres) in Quasar's plugin config.";
+
         private static readonly ConcurrentDictionary<long, DateTime> CleanCooldowns = new ConcurrentDictionary<long, DateTime>();
 
         private static IOreConfig Config => OreYeeterCore.Config;
@@ -31,7 +34,7 @@ namespace OreYeeter
             if (subtype == null)
                 return $"'{ore}' is not a known ore. Available: " + string.Join(", ", OreSubtypes());
 
-            if (PlayerOreStore.Get(steamId).Ores.Contains(subtype))
+            if (PlayerOreStore.GetChecked(steamId).Ores.Contains(subtype))
                 return $"{subtype} is already on your list. " + Summary(steamId);
 
             PlayerOreStore.Update(steamId, s => new PlayerSettings(new HashSet<string>(s.Ores, StringComparer.OrdinalIgnoreCase) { subtype }, s.AutoDrills));
@@ -41,7 +44,7 @@ namespace OreYeeter
         public static string Remove(ulong steamId, string ore)
         {
             string subtype = OreRules.ToOreSubtype(ore);
-            if (!PlayerOreStore.Get(steamId).Ores.Contains(subtype))
+            if (!PlayerOreStore.GetChecked(steamId).Ores.Contains(subtype))
                 return $"{subtype} is not on your list. " + Summary(steamId);
 
             PlayerOreStore.Update(steamId, s => new PlayerSettings(
@@ -88,7 +91,7 @@ namespace OreYeeter
             if (grids == null || grids.Count == 0)
                 return "Sit in a cockpit or look at a grid.";
 
-            var settings = PlayerOreStore.Get(steamId);
+            var settings = PlayerOreStore.GetChecked(steamId);
             int removed = 0;
             bool skipped = false;
             foreach (var grid in grids)
@@ -130,6 +133,9 @@ namespace OreYeeter
 
         public static string MasterAdd(string ore)
         {
+            if (OreYeeterCore.Host.IsClusterNode)
+                return ClusterMaster;
+
             string subtype = FindOre(OreRules.ToOreSubtype(ore));
             if (subtype == null)
                 return $"'{ore}' is not a known ore. Available: " + string.Join(", ", OreSubtypes());
@@ -140,6 +146,9 @@ namespace OreYeeter
 
         public static string MasterRemove(string ore)
         {
+            if (OreYeeterCore.Host.IsClusterNode)
+                return ClusterMaster;
+
             string subtype = OreRules.ToOreSubtype(ore);
             var master = OreRules.GetMaster(Config);
             if (!master.Contains(subtype))
@@ -159,7 +168,7 @@ namespace OreYeeter
 
         private static string Summary(ulong steamId)
         {
-            var s = PlayerOreStore.Get(steamId);
+            var s = PlayerOreStore.GetChecked(steamId);
             return $"Server list: {Join(OreRules.GetMaster(Config))} | Your list: {Join(s.Ores)} | " +
                    (s.AutoDrills ? "all your ship drills yeet" : $"drills named '{Config.DrillNameTag}' yeet");
         }

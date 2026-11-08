@@ -42,6 +42,7 @@ namespace OreYeeter.MagnetarHost
         // IOreYeeterHost
         IOreConfig IOreYeeterHost.Config => _config;
         string IOreYeeterHost.StorageDir => _storageDir;
+        bool IOreYeeterHost.IsClusterNode => PluginCluster.IsClusterProcess;
         void IOreYeeterHost.SaveConfig() => SaveConfig();
         void IOreYeeterHost.LogInfo(string message) => Log.Info(message);
         void IOreYeeterHost.LogError(Exception exception, string message) => Log.Error(message, exception);
@@ -100,7 +101,7 @@ namespace OreYeeter.MagnetarHost
         }
 
         // The nodes of a cluster share this folder, so a player's list follows them from node to node. Null on a plain
-        // server, and on a cluster without shared storage, like one on several hosts with no shared mount.
+        // server, and on a cluster that cannot use it, like one on several hosts with no shared mount or with a bad mount.
         private static string SharedStorageDir()
         {
             if (!PluginCluster.IsClusterProcess)
@@ -109,9 +110,9 @@ namespace OreYeeter.MagnetarHost
             {
                 return PluginStorage.GetSharedDirectory(Id);
             }
-            catch (InvalidOperationException e)
+            catch (Exception e)
             {
-                Log.Warning($"Player lists stay on this node, the cluster has no shared storage: {e.Message}");
+                Log.Warning($"Player lists stay on this node, no shared folder: {e.Message}");
                 return null;
             }
         }

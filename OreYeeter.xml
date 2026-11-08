@@ -20,7 +20,7 @@ stone and ice never fill the containers. The ore is never created, which also sa
 
 A drill voids ore when its name contains the tag (default !ore), or for all of a player's drills after !ore auto.
 Commands: !ore list, !ore add, !ore remove, !ore auto, !ore clean (removes listed ores already stored on a grid).
-Admins can set a server wide ore list that players cannot remove (!ore master ..., or in the Quasar config).
+Admins can set a server wide ore list that players cannot remove (!ore master ..., or in the Quasar config, which is the only way on a cluster).
 Like the personal lists, it only applies to tagged drills, or to all drills of players who used !ore auto.
 
 Also available as a Torch plugin, both builds share the same code.
@@ -31,6 +31,6 @@ Also available as a Torch plugin, both builds share the same code.
         <Directory>Shared</Directory>
     </SourceDirectories>
 
-    <!-- TODO: the commit hash of the version to publish -->
+    <!-- The commit hash of the version to publish -->
     <Commit>eb49c87c333a6ca720ee721a99318b19d1ba80a1</Commit>
 </PluginData>

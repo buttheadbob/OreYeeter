@@ -17,7 +17,7 @@ Shared/          engine neutral core, compiled into both plugins (game assemblie
   PlayerOreStore.cs  per player json files   GridUtils.cs   look-at grid lookup
 TorchPlugin/     Torch host: plugin class, WPF config UI, [Category("ore")] commands, native patch
 ServerPlugin/    Magnetar host: IPlugin, PluginSdk config + [CommandRoot("ore")] commands, Harmony patch
-OreYeeter.xml    MagnetarHub descriptor (fill in the TODOs when publishing)
+OreYeeter.xml    MagnetarHub descriptor (set Commit when publishing)
 Build/           OreYeeter.zip for Torch, written by the Torch build
 ```
 Rules for `Shared/`: no Torch, NLog, Harmony or PluginSdk references, C# 8 syntax at most (the Torch project is limited
@@ -47,6 +47,11 @@ host projects stay thin wrappers.
   list follows them to whichever node they play on. Every node reads the files again within 5 seconds of a change.
   A cluster without shared storage (several hosts with no shared mount) logs a warning and keeps the lists per node.
   `!ore master add` / `remove` would change one node's config only, so they refuse there: set `MasterOres` in Quasar.
+- If the shared folder fails, nodes keep the lists they have in memory and check again. A file that cannot be parsed
+  keeps the list in memory too, and is read again once it changes.
+- Lists made on a cluster before 1.0.2 are not moved. They stay in each node's `OreYeeter\PlayerOres` folder, unread,
+  because the copies on different nodes can disagree. Copy a file into the `PlayerOres` folder under the shared directory
+  to keep it, otherwise the player starts again from `DefaultPlayerOres`.
 
 ## Commands
 | Command | Who | |

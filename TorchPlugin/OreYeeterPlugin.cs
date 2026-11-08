@@ -22,6 +22,7 @@ namespace OreYeeter.TorchHost
         // IOreYeeterHost
         IOreConfig IOreYeeterHost.Config => Config;
         string IOreYeeterHost.StorageDir => StoragePath;
+        bool IOreYeeterHost.IsClusterNode => false;
         void IOreYeeterHost.SaveConfig() => Save();
         void IOreYeeterHost.LogInfo(string message) => Log.Info(message);
         void IOreYeeterHost.LogError(Exception exception, string message) => Log.Error(exception, message);

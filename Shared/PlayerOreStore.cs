@@ -6,6 +6,8 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Sandbox.Game.World;
 
 namespace OreYeeter
@@ -31,8 +33,9 @@ namespace OreYeeter
 
     /// <summary>
     /// Per player settings, one file per player in &lt;host storage&gt;\PlayerOres\&lt;steamid&gt;.json.
-    /// A file is only read the first time the player is needed, then kept in memory. Players without a file use the
-    /// configured default list (nothing is written until they change something).
+    /// A file is read the first time the player is needed, then kept in memory. Servers that share the folder call
+    /// Refresh to pick up each other's changes. Players without a file use the configured default list (nothing is
+    /// written until they change something).
     /// </summary>
     public static class PlayerOreStore
     {
@@ -44,6 +47,7 @@ namespace OreYeeter
         // steam id -> last write time of the file the cached settings were read from or written to
         private static readonly ConcurrentDictionary<ulong, DateTime> FileTimes = new ConcurrentDictionary<ulong, DateTime>();
         private static readonly object WriteLock = new object();
+        private static int _refreshing;
 
         private static string Folder => Path.Combine(OreYeeterCore.Host.StorageDir, FolderName);
         private static string FilePath(ulong steamId) => Path.Combine(Folder, steamId + ".json");
@@ -83,12 +87,33 @@ namespace OreYeeter
             return Cache.TryUpdate(steamId, current, settings) ? current : Get(steamId);
         }
 
+        /// <summary>
+        /// The player's settings after checking their file, for commands that decide from them: another server sharing
+        /// the folder may have written it since the last Refresh.
+        /// </summary>
+        public static PlayerSettings GetChecked(ulong steamId)
+        {
+            lock (WriteLock)
+            {
+                try
+                {
+                    Reload(steamId);
+                }
+                catch (Exception e)
+                {
+                    OreYeeterCore.Host.LogError(e, $"Could not check {FilePath(steamId)}, using the list in memory");
+                }
+                return Get(steamId);
+            }
+        }
+
         /// <summary>Applies a change, updating memory first and then the file.</summary>
         public static PlayerSettings Update(ulong steamId, Func<PlayerSettings, PlayerSettings> change)
         {
             lock (WriteLock)
             {
-                var updated = change(Get(steamId));
+                // Changing stale settings would undo what another server wrote
+                var updated = change(GetChecked(steamId));
                 Cache[steamId] = updated;
                 Save(steamId, updated);
                 return updated;
@@ -98,52 +123,121 @@ namespace OreYeeter
         /// <summary>
         /// Reloads the cached players whose file another process has written since. Only needed when several servers
         /// share the storage folder, like the nodes of a cluster. A player's file has one writer at a time: the server
-        /// the player plays on.
+        /// the player plays on. Runs on a pool thread, so slow or hung storage cannot stall the game thread, and a
+        /// call is skipped while the previous one is still running.
         /// </summary>
         public static void Refresh()
         {
-            foreach (ulong steamId in Cache.Keys)
-            {
-                if (FileTimes.TryGetValue(steamId, out DateTime known) && known == File.GetLastWriteTimeUtc(FilePath(steamId)))
-                    continue;
+            if (Interlocked.CompareExchange(ref _refreshing, 1, 0) == 0)
+                Task.Run(RefreshFiles);
+        }
 
-                lock (WriteLock)
-                    Cache[steamId] = Load(steamId);
+        private static void RefreshFiles()
+        {
+            try
+            {
+                foreach (ulong steamId in Cache.Keys)
+                    Reload(steamId);
+            }
+            catch (Exception e)
+            {
+                OreYeeterCore.Host.LogError(e, "Could not check the player files, keeping the lists in memory");
+            }
+            finally
+            {
+                Volatile.Write(ref _refreshing, 0);
+            }
+        }
+
+        // Replaces the cached settings when the file changed since they were read. Throws when the storage fails: the
+        // cached settings stay and the next check tries again.
+        private static void Reload(ulong steamId)
+        {
+            if (!Cache.ContainsKey(steamId))
+                return;
+
+            FileTimes.TryGetValue(steamId, out DateTime known);
+            string file = FilePath(steamId);
+            // Before the read: a write in between leaves an older time, and the next check reads the file again
+            DateTime written = File.GetLastWriteTimeUtc(file);
+            if (written == known)
+                return;
+
+            // The folder gone as well means a lost mount, not a player's deleted list
+            if (!File.Exists(file) && !Directory.Exists(Folder))
+                return;
+
+            PlayerSettings settings;
+            try
+            {
+                settings = Read(file);
+            }
+            catch (Exception e) when (!IsStorageError(e))
+            {
+                // A broken file: not read again until it changes
+                FileTimes[steamId] = written;
+                OreYeeterCore.Host.LogError(e, $"Could not read {file}, keeping the list in memory");
+                return;
+            }
+
+            lock (WriteLock)
+            {
+                // A write on this server while the file was being read is newer
+                FileTimes.TryGetValue(steamId, out DateTime current);
+                if (current != known)
+                    return;
+
+                Cache[steamId] = settings;
+                FileTimes[steamId] = written;
             }
         }
 
         private static PlayerSettings Load(ulong steamId)
         {
-            var host = OreYeeterCore.Host;
-            var defaults = new PlayerSettings(OreRules.GetDefaults(host.Config), false, true);
             string file = FilePath(steamId);
+            DateTime written = default;
             try
             {
-                // Before the read: a write in between leaves an older time, and Refresh reads the file again
-                FileTimes[steamId] = File.GetLastWriteTimeUtc(file);
-                if (!File.Exists(file))
-                    return defaults;
-
-                using (var stream = File.OpenRead(file))
-                {
-                    var data = (PlayerFile)new DataContractJsonSerializer(typeof(PlayerFile)).ReadObject(stream);
-                    var ores = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    foreach (var entry in data?.Ores ?? new List<string>())
-                    {
-                        var subtype = OreRules.ToOreSubtype(entry);
-                        if (subtype.Length > 0)
-                            ores.Add(subtype);
-                    }
-                    return new PlayerSettings(ores, data?.AutoDrills ?? false);
-                }
+                // Before the read: a write in between leaves an older time, and the next check reads the file again
+                written = File.GetLastWriteTimeUtc(file);
+                var settings = Read(file);
+                FileTimes[steamId] = written;
+                return settings;
             }
             catch (Exception e)
             {
                 // A broken file is treated as the defaults for this session; it is rewritten when the player changes something.
-                host.LogError(e, $"Could not read {file}, using defaults");
-                return defaults;
+                // After a storage error no time is kept, so the next check reads the file again.
+                if (!IsStorageError(e))
+                    FileTimes[steamId] = written;
+                OreYeeterCore.Host.LogError(e, $"Could not read {file}, using defaults");
+                return Defaults();
             }
         }
+
+        private static PlayerSettings Read(string file)
+        {
+            if (!File.Exists(file))
+                return Defaults();
+
+            // The share mode keeps this read from failing the File.Replace of a concurrent Save on Windows
+            using (var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+            {
+                var data = (PlayerFile)new DataContractJsonSerializer(typeof(PlayerFile)).ReadObject(stream);
+                var ores = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var entry in data?.Ores ?? new List<string>())
+                {
+                    var subtype = OreRules.ToOreSubtype(entry);
+                    if (subtype.Length > 0)
+                        ores.Add(subtype);
+                }
+                return new PlayerSettings(ores, data?.AutoDrills ?? false);
+            }
+        }
+
+        private static PlayerSettings Defaults() => new PlayerSettings(OreRules.GetDefaults(OreYeeterCore.Config), false, true);
+
+        private static bool IsStorageError(Exception e) => e is IOException || e is UnauthorizedAccessException;
 
         private static void Save(ulong steamId, PlayerSettings settings)
         {

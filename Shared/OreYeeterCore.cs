@@ -35,6 +35,9 @@ namespace OreYeeter
         /// <summary>Folder for per player files (created on demand).</summary>
         string StorageDir { get; }
 
+        /// <summary>True on a node of a cluster, where the config is set for all nodes at once from outside the server.</summary>
+        bool IsClusterNode { get; }
+
         /// <summary>Persist the config after the core changed it (e.g. "!ore master add").</summary>
         void SaveConfig();
 
